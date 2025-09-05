@@ -1,0 +1,14 @@
+# -*- coding: utf-8 -*-
+tanilar_drop_set = {
+    'DİĞER','TANIMLANMAMIŞ','DİĞER TANIMLANMIŞ',
+    'BAŞKA YERDE SINIFLANMIŞ','BAŞKA YERDE SINIFLANMIŞ HASTALIKLARDA',
+    'BAŞKA YERDE SINIFLANMAMIŞ',
+    'TANIMLANMIŞ','BİRDEN FAZLA YER','ŞİMDİKİ','YERİ TANIMLANMAMIŞ','KAPALI',
+    'BAŞKA YERDE SINIFLANMAMIŞ DİĞER HASTALIKLARDA',
+    'EL','KOL','BACAK','AYAK BİLEĞİ HARİÇ','AYAK VE AYAK BİLEĞİ',
+    'AYAK BİLEĞİ VE AYAK','AYAK/AYAK BİLEĞİ'
+}
+
+tedavi_drop_set = {
+    'DENEME', 'ONUR', 'XX'
+}
