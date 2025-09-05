@@ -96,7 +96,7 @@ Temel ilkeler:
 
 Çıktılar `data/` ve `reports/figures/` içine yazılır.
 
->Not: Bu proje Python 3.10.12 ile geliştirilmiştir.  
+>Not: Bu proje Python 3.12.6 ile geliştirilmiştir.  
 Lütfen aynı sürüm (veya uyumlu sürüm) kullanınız.
 
 
