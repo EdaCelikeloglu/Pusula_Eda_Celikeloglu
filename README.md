@@ -5,9 +5,6 @@
 
 Bu repo; ham klinik kayıt tablosunu **temizleyen**, **normalize eden**, **eksikleri KNN ile dolduran**, **özellik türeten** ve sonuçta **modellemeye hazır** bir veri seti üreten uçtan uca bir Python pipeline’ı içerir. Süreç tek dosyada (`pipeline.py`) toplanmıştır; alan-özgü normalizasyon kuralları `rules/` klasöründedir.
 
-> Not: Bağımlılıklar **`requirements.txt`** dosyasında listelenmiştir.
-
-
 
 ---
 
