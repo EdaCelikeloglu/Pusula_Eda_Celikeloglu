@@ -7,6 +7,8 @@ Bu repo; ham klinik kayıt tablosunu **temizleyen**, **normalize eden**, **eksik
 
 > Not: Bağımlılıklar **`requirements.txt`** dosyasında listelenmiştir.
 
+
+
 ---
 
 ## İçindekiler
@@ -84,13 +86,22 @@ Temel ilkeler:
 
 ## Nasıl Çalıştırılır
 
-1. Bağımlılıklar **`requirements.txt`** içerisindedir.  
+1. Bağımlılıklar **`requirements.txt`** içerisindedir. 
+
+    Repoyu indirdikten sonra terminalden aşağıdaki komutu çalıştırmalısınız:
+             
+        pip install -r requirements.txt
+
 2. Girdi dosyasını `data/Talent_Academy_Case_DT_2025.xlsx` konumuna koyun.  
 3. Komut satırından çalıştırın:
 
        python pipeline.py
 
 Çıktılar `data/` ve `reports/figures/` içine yazılır.
+
+>Not: Bu proje Python 3.10.12 ile geliştirilmiştir.  
+Lütfen aynı sürüm (veya uyumlu sürüm) kullanınız.
+
 
 ---
 
