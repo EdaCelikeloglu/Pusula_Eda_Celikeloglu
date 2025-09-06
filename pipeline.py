@@ -31,8 +31,16 @@ DATA_PATH = os.path.join("data", "Talent_Academy_Case_DT_2025.xlsx")
 RULES_DIR = "rules"  # dış modül kuralları burada
 
 # ---------------------------------------------------------------------
-# Yardımcı: Python modülü yükleme ve kural setini derleme
+# Yardımcılar
 # ---------------------------------------------------------------------
+def UC(txt) -> str:
+    """Tüm label/title/legend metinlerini TÜMÜ BÜYÜK olacak şekilde normalize eder (Türkçe 'i/ı' desteği)."""
+    if txt is None:
+        return ""
+    s = str(txt)
+    tr = str.maketrans({'i': 'İ', 'ı': 'I'})
+    return s.translate(tr).upper()
+
 def _load_py_module(path: str):
     name = os.path.splitext(os.path.basename(path))[0]
     spec = importlib.util.spec_from_file_location(name, path)
@@ -375,26 +383,24 @@ def add_session_features(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     return df, by_tx
 
 # ---------------------------------------------------------------------
-# EDA görselleri
+# EDA görselleri (TÜM LABEL/TITLE/LEGEND UPPERCASE)
 # ---------------------------------------------------------------------
 def run_eda_visuals(data: pd.DataFrame, outdir: str = os.path.join("reports", "figures")) -> None:
     """
-    - Uyruk: yatay bar (Top10 + 'Diğer')
-    - TedaviSuresi: sayısal histogram (tam sayı bin), ort/medyan çizgileri
-    - TedaviAdi: yatay bar (Top30)
-    - Cinsiyet: NaN dahil, her bar farklı renk, yüzde etiketleri
-    - UygulamaYerleri: virgülle ayrılmışları token'layıp (explode) Top30 yatay bar
-    - Eklenenler (seaborn): Sayısal korelasyon ısı haritası + Yas↔Seans scatter
+    - UYRUK: YATAY BAR (TOP10 + 'DİĞER')
+    - TEDAVİSURESİ: SAYISAL HİSTOGRAM (TAM SAYI BİN), ORT/MEDYAN ÇİZGİLERİ
+    - TEDAVİADİ: YATAY BAR (TOP30)
+    - CİNSİYET: NAN DAHİL, HER BAR FARKLI RENK, YÜZDE ETİKETLERİ
+    - UYGULAMAYERLERİ: TOKEN'LANMIŞ TOP30 YATAY BAR
+    - SEABORN: SAYISAL KORELASYON ISI HARİTASI + YAŞ↔SEANS SCATTER
     """
     os.makedirs(outdir, exist_ok=True)
 
-    # Matplotlib font boyutları (diğer grafikleri etkiler)
     plt.rcParams.update({
         "axes.titlesize": 16, "axes.labelsize": 13,
         "xtick.labelsize": 12, "ytick.labelsize": 12
     })
-    # Seaborn tema
-    sns.set_theme(style="whitegrid", context="talk")  # konuşma boyutunda, sade
+    sns.set_theme(style="whitegrid", context="talk")
 
     # -------- yardımcılar --------
     def _clean_series(s: pd.Series) -> pd.Series:
@@ -408,7 +414,7 @@ def run_eda_visuals(data: pd.DataFrame, outdir: str = os.path.join("reports", "f
         if len(vc) <= top_n:
             return vc
         head = vc.head(top_n).copy()
-        head.loc["Diğer"] = vc.iloc[top_n:].sum()
+        head.loc[UC("Diğer")] = vc.iloc[top_n:].sum()
         return head
 
     def _save(fig, path):
@@ -426,42 +432,42 @@ def run_eda_visuals(data: pd.DataFrame, outdir: str = os.path.join("reports", "f
                 ax.text(w + max(1, 0.01*w), p.get_y() + p.get_height()/2,
                         fmt.format(int(round(w))), va="center", fontsize=11)
 
-    # -------- Yaş (histogram - Matplotlib) --------
+    # -------- YAŞ (HİSTOGRAM) --------
     if "Yas" in data.columns:
         s = pd.to_numeric(data["Yas"], errors="coerce").dropna()
         if len(s) > 0:
             fig, ax = plt.subplots(figsize=(9, 6))
             ax.hist(s, bins=30, edgecolor="black", alpha=0.75)
-            ax.set_title("Histogram - Yaş"); ax.set_xlabel("Yaş"); ax.set_ylabel("Frekans")
+            ax.set_title(UC("Histogram - Yaş"))
+            ax.set_xlabel(UC("Yaş"))
+            ax.set_ylabel(UC("Frekans"))
             ax.grid(axis="y", linestyle="--", alpha=0.4)
             _save(fig, os.path.join(outdir, "hist_Yas.png"))
 
-    # -------- TedaviSuresi(Seans) histogram - Matplotlib --------
+    # -------- TEDAVİ SÜRESİ (SEANS) HİSTOGRAM --------
     seans_num = None
     if "TedaviSuresi(Seans)" in data.columns:
         seans_num = pd.to_numeric(data["TedaviSuresi(Seans)"], errors="coerce")
     elif "TedaviSuresi" in data.columns:
-        seans_num = pd.to_numeric(
-            clean_and_int(data["TedaviSuresi"]).astype("Float64"),
-            errors="coerce"
-        )
+        seans_num = pd.to_numeric(clean_and_int(data["TedaviSuresi"]).astype("Float64"), errors="coerce")
     if seans_num is not None:
         s = seans_num.dropna().astype(int)
         if len(s) > 0:
-            bins = np.arange(s.min()-0.5, s.max()+1.5, 1)  # tam sayıya hizalı
+            bins = np.arange(s.min()-0.5, s.max()+1.5, 1)
             fig, ax = plt.subplots(figsize=(12, 6.5))
             ax.hist(s, bins=bins, edgecolor="black", alpha=0.8)
             ax.set_xticks(np.arange(s.min(), s.max()+1, max(1, (s.max()-s.min())//15 or 1)))
-            ax.set_title("Seans Sayısı Dağılımı"); ax.set_xlabel("Seans"); ax.set_ylabel("Adet")
-            # Ort/medyan çizgileri
+            ax.set_title(UC("Seans Sayısı Dağılımı"))
+            ax.set_xlabel(UC("Seans"))
+            ax.set_ylabel(UC("Adet"))
             mean_v = s.mean(); med_v = s.median()
-            ax.axvline(mean_v, color="#2e86c1", linestyle="--", linewidth=2, label=f"Ortalama: {mean_v:.1f}")
-            ax.axvline(med_v, color="#c0392b", linestyle="-.", linewidth=2, label=f"Medyan: {med_v:.0f}")
-            ax.legend(loc="upper right")
+            ax.axvline(mean_v, color="#2e86c1", linestyle="--", linewidth=2, label=UC(f"Ortalama: {mean_v:.1f}"))
+            ax.axvline(med_v, color="#c0392b", linestyle="-.", linewidth=2, label=UC(f"Medyan: {med_v:.0f}"))
+            ax.legend(loc="upper right", title=UC("Özet"))
             ax.grid(axis="y", linestyle=":", alpha=0.4)
             _save(fig, os.path.join(outdir, "hist_TedaviSuresiSeans.png"))
 
-    # -------- UygulamaSuresi donut - Matplotlib --------
+    # -------- UYGULAMA SÜRESİ DONUT --------
     if "UygulamaSuresi" in data.columns:
         vc_all = _vc_dropna(data["UygulamaSuresi"])
         vc = _vc_with_other(vc_all, top_n=6)
@@ -472,27 +478,30 @@ def run_eda_visuals(data: pd.DataFrame, outdir: str = os.path.join("reports", "f
                                 pctdistance=0.78, textprops={"fontsize": 12})
             centre_circle = plt.Circle((0, 0), 0.55, fc="white")
             fig.gca().add_artist(centre_circle)
-            ax.set_title("Donut - UygulamaSuresi (Top6 + Diğer)")
-            ax.legend(wedges, vc.index.tolist(), title="Uygulama Süresi",
-                      loc="center left", bbox_to_anchor=(1.02, 0.5), fontsize=12)
+            ax.set_title(UC("Donut - Uygulama Süresi (Top6 + Diğer)"))
+            legend_labels = [UC(x) for x in vc.index.tolist()]
+            lg = ax.legend(wedges, legend_labels, title=UC("Uygulama Süresi"),
+                           loc="center left", bbox_to_anchor=(1.02, 0.5), fontsize=12)
+            lg.set_title(UC("Uygulama Süresi"))
             _save(fig, os.path.join(outdir, "donut_UygulamaSuresi.png"))
 
-    # -------- UygulamaYerleri (token’lanmış, Top30 yatay bar) - Matplotlib --------
+    # -------- UYGULAMA YERLERİ (TOP30 YATAY BAR) --------
     if "UygulamaYerleri" in data.columns:
-        # virgülle ayrılmış hücreleri parçala ve say
         tok_counts = token_value_counts(_clean_series(data["UygulamaYerleri"]))
         vc = tok_counts.head(30).sort_values()
         if len(vc) > 0:
             fig, ax = plt.subplots(figsize=(10, 12))
             y = np.arange(len(vc))
             ax.barh(y, vc.values)
-            ax.set_yticks(y); ax.set_yticklabels(vc.index, fontsize=11)
-            ax.set_xlabel("Adet"); ax.set_title("Kategori Dağılımı - UygulamaYerleri (Top30)")
+            ax.set_yticks(y)
+            ax.set_yticklabels([UC(x) for x in vc.index], fontsize=11)
+            ax.set_xlabel(UC("Adet"))
+            ax.set_title(UC("Kategori Dağılımı - Uygulama Yerleri (Top30)"))
             _annotate_hbars(ax)
             ax.grid(axis="x", linestyle=":", alpha=0.4)
             _save(fig, os.path.join(outdir, "hbar_UygulamaYerleri.png"))
 
-    # -------- Uyruk (yatay bar, Top10 + Diğer) - Matplotlib --------
+    # -------- UYRUK (TOP10 + DİĞER) --------
     if "Uyruk" in data.columns:
         vc_all = _vc_dropna(data["Uyruk"])
         vc = _vc_with_other(vc_all, top_n=10).sort_values()
@@ -501,30 +510,34 @@ def run_eda_visuals(data: pd.DataFrame, outdir: str = os.path.join("reports", "f
             fig, ax = plt.subplots(figsize=(12, 8))
             y = np.arange(len(vc))
             ax.barh(y, vc.values)
-            ax.set_yticks(y); ax.set_yticklabels(vc.index)
-            ax.set_xlabel("Adet"); ax.set_title("Uyruk - Top10 + Diğer (Yatay Bar)")
-            # adet + yüzde etiketi
+            ax.set_yticks(y)
+            ax.set_yticklabels([UC(x) for x in vc.index])
+            ax.set_xlabel(UC("Adet"))
+            ax.set_title(UC("Uyruk - Top10 + Diğer (Yatay Bar)"))
             for i, v in enumerate(vc.values):
-                ax.text(v + max(1, 0.01*v), i, f"{int(v)}  ({v/total*100:.1f}%)", va="center", fontsize=11)
+                ax.text(v + max(1, 0.01*v), i, UC(f"{int(v)}  ({v/total*100:.1f}%)"), va="center", fontsize=11)
             ax.grid(axis="x", linestyle=":", alpha=0.4)
             _save(fig, os.path.join(outdir, "barh_Uyruk.png"))
 
-    # -------- Cinsiyet (NaN dahil, farklı renkler, yüzde) - Matplotlib --------
+    # -------- CİNSİYET (YÜZDE BAR, NAN DAHİL) --------
     if "Cinsiyet" in data.columns:
         s = _clean_series(data["Cinsiyet"])
         vc = s.fillna("NaN").value_counts()
         if len(vc) > 0:
             total = vc.sum()
             fig, ax = plt.subplots(figsize=(14, 4.8))
-            colors = plt.cm.tab10(np.linspace(0, 1, len(vc)))  # her bar farklı renk
-            bars = ax.bar(vc.index.tolist(), (vc/total*100).values, color=colors)
-            ax.set_ylim(0, 100); ax.set_ylabel("%"); ax.set_title("Cinsiyet - Yüzde Dağılım (NaN dahil)")
+            colors = plt.cm.tab10(np.linspace(0, 1, len(vc)))
+            cats = [UC(x) for x in vc.index.tolist()]
+            bars = ax.bar(cats, (vc/total*100).values, color=colors)
+            ax.set_ylim(0, 100)
+            ax.set_ylabel(UC("%"))
+            ax.set_title(UC("Cinsiyet - Yüzde Dağılım (NaN Dahil)"))
             ax.grid(axis="y", linestyle=":", alpha=0.5)
             for b, p in zip(bars, (vc/total*100).values):
-                ax.text(b.get_x()+b.get_width()/2, b.get_height()+2, f"{p:.1f}%", ha="center", fontsize=12)
+                ax.text(b.get_x()+b.get_width()/2, b.get_height()+2, UC(f"{p:.1f}%"), ha="center", fontsize=12)
             _save(fig, os.path.join(outdir, "barpct_Cinsiyet_withNaN.png"))
 
-    # -------- Kan Grubu (ABO × Rh) - Matplotlib --------
+    # -------- KAN GRUBU (ABO × RH) --------
     if "KanGrubu" in data.columns:
         raw = (data["KanGrubu"].astype(str).str.replace(r"\s+", "", regex=True).str.strip())
         def _parse_abo_rh(x: str):
@@ -537,21 +550,23 @@ def run_eda_visuals(data: pd.DataFrame, outdir: str = os.path.join("reports", "f
             tbl = abo_rh.value_counts().unstack(fill_value=0).reindex(index=["O","A","B","AB"], fill_value=0)
             fig, ax = plt.subplots(figsize=(12, 6))
             x = np.arange(len(tbl.index)); w = 0.35
-            ax.bar(x-w/2, tbl.get("+", pd.Series(0, index=tbl.index)), width=w, label="Rh+")
-            ax.bar(x+w/2, tbl.get("-", pd.Series(0, index=tbl.index)), width=w, label="Rh−")
-            ax.set_xticks(x); ax.set_xticklabels(tbl.index)
-            ax.set_ylabel("Adet"); ax.set_title("Kan Grubu - ABO × Rh")
-            ax.legend(); ax.grid(axis="y", linestyle=":", alpha=0.4)
+            ax.bar(x-w/2, tbl.get("+", pd.Series(0, index=tbl.index)), width=w, label=UC("Rh+"))
+            ax.bar(x+w/2, tbl.get("-", pd.Series(0, index=tbl.index)), width=w, label=UC("Rh-"))
+            ax.set_xticks(x); ax.set_xticklabels([UC(ix) for ix in tbl.index])
+            ax.set_ylabel(UC("Adet"))
+            ax.set_title(UC("Kan Grubu - ABO × Rh"))
+            leg = ax.legend(title=UC("Rh"))
+            leg.set_title(UC("Rh"))
+            ax.grid(axis="y", linestyle=":", alpha=0.4)
             _save(fig, os.path.join(outdir, "grouped_KanGrubu_ABO_Rh.png"))
 
     # ======================
     # SEABORN EKLER
     # ======================
 
-    # --- Korelasyon ısı haritası (hedef ilk sırada) - seaborn ---
+    # --- KORELASYON ISI HARİTASI ---
     try:
-        # 1) Güçlü biçimde sayısallaştır: EDA aşamasında metin olabilir.
-        #    TedaviSuresi(Seans)
+        # 1) Sayısala çevir
         if "TedaviSuresi(Seans)" in data.columns:
             seans = pd.to_numeric(data["TedaviSuresi(Seans)"], errors="coerce")
         elif "TedaviSuresi" in data.columns:
@@ -559,7 +574,6 @@ def run_eda_visuals(data: pd.DataFrame, outdir: str = os.path.join("reports", "f
         else:
             seans = pd.Series(np.nan, index=data.index)
 
-        #    UygulamaSuresi(Dakika)
         if "UygulamaSuresi(Dakika)" in data.columns:
             dakika = pd.to_numeric(data["UygulamaSuresi(Dakika)"], errors="coerce")
         elif "UygulamaSuresi" in data.columns:
@@ -567,11 +581,9 @@ def run_eda_visuals(data: pd.DataFrame, outdir: str = os.path.join("reports", "f
         else:
             dakika = pd.Series(np.nan, index=data.index)
 
-        #    Yas
         yas = pd.to_numeric(data["Yas"], errors="coerce") if "Yas" in data.columns else pd.Series(np.nan,
                                                                                                   index=data.index)
 
-        # 2) DataFrame'i sabit isimlerle kur ve korelasyonu al
         num_df = pd.DataFrame({
             "TedaviSuresi(Seans)": seans,
             "UygulamaSuresi(Dakika)": dakika,
@@ -580,31 +592,51 @@ def run_eda_visuals(data: pd.DataFrame, outdir: str = os.path.join("reports", "f
 
         corr = num_df.corr(method="pearson")
 
-        # 3) Hedefi ilk sıraya koy (hem satır hem sütun)
+        # 2) Hedefi ilk sıraya koy ve kısa eksen etiketleri hazırla
         order = [c for c in ["TedaviSuresi(Seans)", "UygulamaSuresi(Dakika)", "Yas"] if c in corr.index]
         corr = corr.loc[order, order]
+        short_labels_map = {
+            "TedaviSuresi(Seans)": UC("Seans"),
+            "UygulamaSuresi(Dakika)": UC("Dakika"),
+            "Yas": UC("Yaş")
+        }
+        disp_labels = [short_labels_map.get(c, UC(c)) for c in order]
 
-        # En az iki değişken doluysa çiz
+        # 3) Çizim (geniş figür + marjin + döndürülmüş x etiketleri)
         if corr.shape[0] >= 2:
-            fig, ax = plt.subplots(figsize=(7.2, 6.2))
-            sns.heatmap(
+            fig, ax = plt.subplots(figsize=(9.6, 7.0))
+            hm = sns.heatmap(
                 corr,
                 ax=ax,
                 cmap="coolwarm",
                 center=0,
                 vmin=-1, vmax=1,
-                annot=True, fmt=".2f", square=True,
+                annot=True, fmt=".2f",
                 linewidths=0.6, linecolor="white",
-                cbar_kws={"shrink": .8, "label": "Pearson r"}
+                square=False,  # kare zorlamayı kaldır
+                cbar_kws={"shrink": .85, "label": UC("Pearson r")},
+                annot_kws={"size": 11}
             )
-            ax.set_title("Korelasyon Isı Haritası (Hedef: TedaviSuresi(Seans))")
+
+            # Eksen etiketleri
+            ax.set_xticklabels(disp_labels, rotation=35, ha="right")
+            ax.set_yticklabels(disp_labels, rotation=0)
+            ax.tick_params(axis='x', pad=6, labelsize=11)
+            ax.tick_params(axis='y', labelsize=11)
+
+            # Başlığı iki satıra böl + boşluk
+            ax.set_title(UC("Korelasyon Isı Haritası\n(Hedef: Seans)"), pad=12)
+
+            # Marjinleri genişlet (etiketler kesilmesin)
+            fig.subplots_adjust(left=0.22, right=0.98, top=0.88, bottom=0.28)
+
             _save(fig, os.path.join(outdir, "heatmap_corr_numeric.png"))
         else:
             print("[WARN] Isı haritası için yeterli sayısal kolon bulunamadı.")
     except Exception as e:
         print(f"[WARN] Korelasyon ısı haritası üretilemedi: {e}")
 
-    # --- Scatter: Yas vs TedaviSuresi(Seans) - seaborn ---
+    # --- SCATTER: YAŞ vs TEDAVİSÜRESİ(SEANS) ---
     try:
         if "Yas" in data.columns:
             y = pd.to_numeric(data["Yas"], errors="coerce")
@@ -620,24 +652,25 @@ def run_eda_visuals(data: pd.DataFrame, outdir: str = os.path.join("reports", "f
                 if m.any():
                     fig, ax = plt.subplots(figsize=(7.8, 5.8))
                     sns.scatterplot(x=y[m], y=s[m], ax=ax, alpha=0.35)
-                    # İsteğe bağlı: eğilim çizgisi (regression line)
                     sns.regplot(x=y[m], y=s[m], ax=ax, scatter=False, ci=None, line_kws={"linewidth": 2})
-                    ax.set_xlabel("Yaş"); ax.set_ylabel("Seans")
-                    ax.set_title("Yas ↔ TedaviSuresi(Seans) (Seaborn Scatter + Trend)")
+                    ax.set_xlabel(UC("Yaş"))
+                    ax.set_ylabel(UC("Seans"))
+                    ax.set_title(UC("Yaş ↔ TedaviSuresi(Seans) (Seaborn Scatter + Trend)"))
                     ax.grid(True, linestyle=":", alpha=0.5)
                     _save(fig, os.path.join(outdir, "scatter_Yas_vs_Seans.png"))
     except Exception as e:
         print(f"[WARN] Scatter üretilemedi: {e}")
 
-    # -------- TedaviAdi (yatay bar, Top30) - Matplotlib --------
+    # -------- TEDAVİADİ (TOP30 YATAY BAR) --------
     if "TedaviAdi" in data.columns:
         vc = _vc_dropna(data["TedaviAdi"]).head(30).sort_values()
         if len(vc) > 0:
             fig, ax = plt.subplots(figsize=(10, 12))
             y = np.arange(len(vc))
             ax.barh(y, vc.values)
-            ax.set_yticks(y); ax.set_yticklabels(vc.index, fontsize=11)
-            ax.set_xlabel("Adet"); ax.set_title("TedaviAdi - Top30 (Yatay Bar)")
+            ax.set_yticks(y); ax.set_yticklabels([UC(x) for x in vc.index], fontsize=11)
+            ax.set_xlabel(UC("Adet"))
+            ax.set_title(UC("Tedavi Adı - Top30 (Yatay Bar)"))
             _annotate_hbars(ax)
             ax.grid(axis="x", linestyle=":", alpha=0.4)
             _save(fig, os.path.join(outdir, "barh_TedaviAdi.png"))
@@ -707,7 +740,7 @@ def build_model_ready(df: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
     if "KanGrubu" in base_cat_cols:
         data["KanGrubu"] = _clean_kan_grubu(data["KanGrubu"])
 
-    # KNN öncesi kategorikleri normalize et (NaN'ları doğru tanımak için)
+    # KNN öncesi kategorikleri normalize et
     if base_cat_cols:
         for c in base_cat_cols:
             data[c] = _strip_and_nanify(data[c])
@@ -717,11 +750,11 @@ def build_model_ready(df: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
     for c in num_cols_for_knn:
         data[c] = pd.to_numeric(data[c], errors="coerce")
 
-    # İmputasyon metrikleri: önce NA
+    # İmputasyon metrikleri
     knn_cols = num_cols_for_knn + base_cat_cols
     before_na = {c: int(data[c].isna().sum()) for c in knn_cols}
 
-    # Kategorikleri koda geçir → KNN
+    # Encode → KNN
     data_enc, code_to_label, label_to_code = _encode_cats_to_codes_for_knn(data, base_cat_cols)
     knn_df = data_enc[knn_cols].copy()
 
@@ -737,21 +770,21 @@ def build_model_ready(df: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
     if residual:
         raise ValueError(f"KNN sonrası bazı kolonlarda NA kaldı: {residual}")
 
-    # Kodları etikete döndür ve ana tabloya yaz
+    # Decode geri yaz
     back = _decode_codes_to_cats(knn_imputed, code_to_label, base_cat_cols)
     for c in num_cols_for_knn:
         data[c] = back[c].astype(float)
     for c in base_cat_cols:
         data[c] = back[c].astype("string")
 
-    # Yas'ı ölçekle (KNN sonrası)
+    # Yaş ölçekle
     yas_scaled = False
     if "Yas" in data.columns:
         scaler = StandardScaler()
         data["Yas"] = scaler.fit_transform(data[["Yas"]])
         yas_scaled = True
 
-    # One-hot (drop_first=True) — dummy_na=False (NA yok zaten)
+    # One-hot
     if base_cat_cols:
         cats_for_ohe = data[base_cat_cols].apply(lambda s: s.astype("string").str.strip())
         ohe_df = pd.get_dummies(
@@ -762,9 +795,7 @@ def build_model_ready(df: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
             dtype="Int8",
             dummy_na=False
         )
-        # baz bazında sayım
         ohe_counts = {base: sum(col.startswith(f"{base}_") for col in ohe_df.columns) for base in base_cat_cols}
-        # okunabilir sıra
         order_bases = ["Cinsiyet", "KanGrubu", "Uyruk", "Bolum"]
         ohe_cols_ordered = [col for base in order_bases for col in ohe_df.columns if col.startswith(f"{base}_")]
         ohe_df = ohe_df.reindex(columns=ohe_cols_ordered)
@@ -772,26 +803,24 @@ def build_model_ready(df: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
         ohe_df = pd.DataFrame(index=data.index)
         ohe_counts = {}
 
-    # Multi-hot (yalnız 1/0, __n hariç)
+    # Multi-hot (1/0, __n hariç)
     multi_hot_cols = [
         c for c in data.columns
         if re.match(r'^(DX|CHR|ALG|SITE|TX)__', c) and not c.endswith("__n")
     ]
-    # prefix bazında sayım
     prefixes = ["DX__", "CHR__", "ALG__", "SITE__", "TX__"]
     mh_counts = {p: sum(col.startswith(p) for col in multi_hot_cols) for p in prefixes}
 
-    # Nihai kolon sırası
+    # Nihai tablo
     base_needed = ["HastaTedaviSeansID", "TedaviSuresi(Seans)", "UygulamaSuresi(Dakika)", "Yas"]
     base_df = data.reindex(columns=[c for c in base_needed if c in data.columns])
     final_df = pd.concat([base_df, ohe_df, data[multi_hot_cols]], axis=1)
 
-    # Rapor: yalnızca doldurulan kolonlar
+    # Rapor
     imputed_numeric_used = [c for c in num_cols_for_knn if before_na.get(c, 0) > 0]
     imputed_categorical_used = [c for c in base_cat_cols if before_na.get(c, 0) > 0]
     filled_by_knn = {c: before_na[c] for c in (imputed_numeric_used + imputed_categorical_used)}
     total_filled = int(sum(filled_by_knn.values()))
-
     model_ready_total_na = int(final_df.isna().sum().sum())
 
     report = {
@@ -801,26 +830,23 @@ def build_model_ready(df: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
         "total_filled_by_knn": total_filled,
         "yas_scaled": yas_scaled,
         "onehot_bases": base_cat_cols,
-        "onehot_counts": ohe_counts,
+        "onehot_counts": ohe_df.shape[1] and {base: sum(col.startswith(f"{base}_") for col in ohe_df.columns) for base in base_cat_cols} or {},
         "onehot_drop_first": True,
         "multi_hot_counts": mh_counts,
         "model_ready_total_na": model_ready_total_na,
     }
     return final_df, report
 
-
 # ---------------------------------------------------------------------
-# Konsol raporu (sade)
+# Konsol raporu
 # ---------------------------------------------------------------------
 def _fmt_counts(d: Dict[str, int]) -> str:
     return ", ".join([f"{k}={v}" for k, v in d.items()]) if d else "(yok)"
 
 def print_processing_report(cat_cols: List[str], report: dict, multihot_details: List[dict]) -> None:
-    # 1) Kategoriğe çevrilen sütunlar
     print("\n>>> Kategoriğe çevrilen sütunlar:")
     print(" - " + (", ".join(cat_cols) if cat_cols else "(Yok)"))
 
-    # 2) Eksik değer doldurma özeti
     print("\n>>> Eksik değer doldurma (KNNImputer):")
     num_used = report.get("numerics_knn_imputed_used", [])
     cat_used = report.get("categoricals_knn_imputed_used", [])
@@ -830,27 +856,23 @@ def print_processing_report(cat_cols: List[str], report: dict, multihot_details:
     print(f" - Doldurulan hücre sayıları: {_fmt_counts(filled)}")
     print(f" - Toplam doldurulan hücre: {report.get('total_filled_by_knn', 0)}")
 
-    # 3) Dönüşümler
     print("\n>>> Dönüşümler:")
     yas_scaled = report.get("yas_scaled", False)
     print(f" - Yas ölçeklendi: {'Evet' if yas_scaled else 'Hayır'}")
     ohe_bases = report.get("onehot_bases", [])
     ohe_counts = report.get("onehot_counts", {})
     if ohe_bases:
-        # örn: Cinsiyet=1, KanGrubu=7, ...
         ohe_line = ", ".join([f"{b}={ohe_counts.get(b, 0)}" for b in ohe_bases])
         print(f" - One-hot (drop_first=True): {ohe_line}")
     else:
         print(" - One-hot: (yok)")
     mh_counts = report.get("multi_hot_counts", {})
     if mh_counts:
-        # örn: DX__=30, CHR__=20, ...
         mh_line = ", ".join([f"{k}={v}" for k, v in mh_counts.items()])
         print(f" - Multi-hot: {mh_line}")
     else:
         print(" - Multi-hot: (yok)")
 
-    # 4) Nihai tablo boşluk kontrolü
     total_na = report.get("model_ready_total_na", None)
     if total_na is not None:
         print(f"\n>>> Modellemeye hazır tabloda toplam NA: {total_na}")
@@ -859,15 +881,13 @@ def print_processing_report(cat_cols: List[str], report: dict, multihot_details:
         else:
             print(">>> Boş değer kontrolü: DİKKAT (NA mevcut)")
 
-
 # ---------------------------------------------------------------------
 # Ana akış
 # ---------------------------------------------------------------------
 def run_pipeline(data_path: str, rules_dir: str) -> Tuple[pd.DataFrame, List[str]]:
-    # 1) Veriyi oku, describe/NA özetlerini bas, EDA görsellerini üret
     df = read_and_explore(data_path)
 
-    # 2) Süre sütunlarını sayısala çevir
+    # Süre sütunlarını sayısala çevir
     if "TedaviSuresi" in df.columns:
         df["TedaviSuresi(Seans)"] = clean_and_int(df["TedaviSuresi"])
         df.drop(columns=["TedaviSuresi"], inplace=True)
@@ -875,15 +895,15 @@ def run_pipeline(data_path: str, rules_dir: str) -> Tuple[pd.DataFrame, List[str
         df["UygulamaSuresi(Dakika)"] = clean_and_int(df["UygulamaSuresi"])
         df.drop(columns=["UygulamaSuresi"], inplace=True)
 
-    # 3) Düşük kardinaliteli object sütunları kategorik yap
+    # Düşük kardinaliteli object sütunları kategorik yap
     df, cat_cols = convert_to_categorical(df, threshold=10)
 
-    # 4) Kuralları yükle
+    # Kuralları yükle
     rules = load_rules_from_dir_py(rules_dir)
     per_col = rules['per_column']
     site_groups = rules['site_groups']
 
-    # 5) Çok-değerli metin sütunlarını normalize et
+    # Çok-değerli metin sütunlarını normalize et
     if "TedaviAdi" in df.columns:
         df["TedaviAdi"] = _pre_clean_tedavi(df["TedaviAdi"])
 
@@ -904,7 +924,7 @@ def run_pipeline(data_path: str, rules_dir: str) -> Tuple[pd.DataFrame, List[str
             r'\b([A-ZÇĞİÖŞÜ]+)(?:\s+\1)+\b', r'\1', regex=True
         )
 
-    # 6) Uygulama yerlerini üst-gruplara map et
+    # Uygulama yerlerini üst-gruplara map et
     if "UygulamaYerleri_cleaned" in df.columns:
         df["UygulamaYerleri_grouped"] = map_sites_multi(df["UygulamaYerleri_cleaned"], site_groups)
 
@@ -928,6 +948,17 @@ if __name__ == "__main__":
 
     # Tedavi düzeyi özet metrikler
     df, by_tx = add_session_features(df)
+
+    # Çok-etiketli sütunlar için eksiklik bayrakları
+    for src, pfx in [
+        ("Tanilar_cleaned", "DX"),
+        ("KronikHastalik_cleaned", "CHR"),
+        ("Alerji_cleaned", "ALG"),
+        ("UygulamaYerleri_grouped", "SITE"),
+        ("TedaviAdi_cleaned", "TX"),
+    ]:
+        if src in df.columns:
+            df[f"{pfx}__missing"] = df[src].isna().astype("Int8")
 
     # Multi-hot kolonlar + rapor için ayrıntıları topla
     multihot_info: List[dict] = []
@@ -970,5 +1001,3 @@ if __name__ == "__main__":
     model_ready_path = os.path.join("data", "model_ready.xlsx")
     model_ready.to_excel(model_ready_path, index=False)
     print(f">>> Modellemeye hazır veri kaydedildi: {model_ready_path}")
-
-

@@ -5,7 +5,6 @@
 
 Bu repo; ham klinik kayıt tablosunu **temizleyen**, **normalize eden**, **eksikleri KNN ile dolduran**, **özellik türeten** ve sonuçta **modellemeye hazır** bir veri seti üreten uçtan uca bir Python pipeline’ı içerir. Süreç tek dosyada (`pipeline.py`) toplanmıştır; alan-özgü normalizasyon kuralları `rules/` klasöründedir.
 
-
 ---
 
 ## İçindekiler
@@ -29,11 +28,20 @@ Bu repo; ham klinik kayıt tablosunu **temizleyen**, **normalize eden**, **eksik
 - Konsol Çıktısı  
 - EDA Çıktıları  
 - Üretilen Dosyalar  
+- **Görsel Etiket Standardı**  
+- **Çok-Etiketli Alanlarda Eksik Bayrakları**  
+- **Multi-Hot “other” Sütunları**  
+- **KNN İmputasyonu – Parametreler & Kapsam**  
+- **ID Sıralama Varsayımı**  
+- **Gereksinimler (önerilen sürümler)**  
 - Kurallar (`rules/`) — Yapı ve Örnekler  
   - Kuralların Çalışma Mantığı  
   - Dosya Bazında Beklenen Şema  
   - Örnek Kural Dosyaları  
   - En İyi Uygulamalar ve İpuçları  
+- Gizlilik / Görselleştirme Güvenliği  
+- Bilinen Sınırlar  
+- Parametreleştirme (opsiyonel)  
 - Sorun Giderme  
 - Genişletme İpuçları
 
@@ -76,29 +84,23 @@ Temel ilkeler:
     │  ├─ tedavi.py
     │  ├─ noise.py
     │  └─ site_groups.py
-    ├─ requirements.txt                        # Bağımlılıklar
+    ├─ requirements.txt                        # Bağımlılıklar bu dosyada
     └─ pipeline.py                             # Tüm akışın tek dosyası
 
 ---
 
 ## Nasıl Çalıştırılır
 
-1. Bağımlılıklar **`requirements.txt`** içerisindedir. 
-
-    Repoyu indirdikten sonra terminalden aşağıdaki komutu çalıştırmalısınız:
-             
-        pip install -r requirements.txt
+1. Bağımlılıklar **requirements.txt** içindedir. Terminalde:
+       
+       pip install -r requirements.txt
 
 2. Girdi dosyasını `data/Talent_Academy_Case_DT_2025.xlsx` konumuna koyun.  
 3. Komut satırından çalıştırın:
 
        python pipeline.py
 
-Çıktılar `data/` ve `reports/figures/` içine yazılır.
-
->Not: Bu proje Python 3.12.6 ile geliştirilmiştir.  
-Lütfen aynı sürüm (veya uyumlu sürüm) kullanınız.
-
+> Not: Proje Python 3.12.6 ile geliştirilmiştir (uyumlu 3.10+ önerilir).
 
 ---
 
@@ -163,10 +165,9 @@ Lütfen aynı sürüm (veya uyumlu sürüm) kullanınız.
   - `Alerji_cleaned` → `ALG__` (Top 10)  
   - `UygulamaYerleri_grouped` → `SITE__` (Tümü)  
   - `TedaviAdi_cleaned` → `TX__` (Top 15)  
-- “`__n`” sayım kolonları **model_ready’ye eklenmez** (yalnız 1/0’lar).
+- “`__n`” sayım kolonları **model_ready’ye eklenmez** (yalnız 1/0’lar eklenir).
 
-### 11) Modellemeye Hazır Tablonun Şeması
-Sıra:
+### 11) Modellemeye Hazır Tablonun Şeması (Sıra)
 1. `HastaTedaviSeansID`  
 2. `TedaviSuresi(Seans)`  
 3. `UygulamaSuresi(Dakika)`  
@@ -190,7 +191,7 @@ Sıra:
   - “Dönüşümler:  
     — Yas ölçeklendi: Evet/Hayır  
     — One-hot (drop_first=True): {Cinsiyet=…, KanGrubu=…, Uyruk=…, Bolum=…}  
-    — Multi-hot: {DX__=30, CHR__=20, ALG__=10, SITE__=Tümü, TX__=15}”  
+    — Multi-hot: {DX__=30, CHR__=20, ALG__=10, SITE__=tümü, TX__=15}”  
   - “Modellemeye hazır tabloda toplam NA: 0” → “Boş değer kontrolü: PAS”
 
 ---
@@ -218,6 +219,58 @@ Sıra:
 - `data/rows.xlsx` — Temizlenmiş **satır düzeyi** veri  
 - `data/by_treatment.xlsx` — **Tedavi başına** özet metrikler  
 - `data/model_ready.xlsx` — **Eksikleri KNN ile kapanmış**, **Yas ölçeklenmiş**, **one-hot + multi-hot** genişletilmiş nihai set
+
+---
+
+## Görsel Etiket Standardı
+
+- Grafiklerde **tüm başlıklar, eksen etiketleri, lejant başlıkları ve kategori yazıları** **BÜYÜK HARF**’e normalize edilir (Türkçe `i/ı` düzeltmeli).  
+- Bu standart `pipeline.py` içindeki `UC()` yardımcı fonksiyonuyla otomatik uygulanır.
+
+---
+
+## Çok-Etiketli Alanlarda Eksik Bayrakları
+
+Aşağıdaki alanlar için ek bayrak sütunları üretilir (hücre tamamen boşsa 1):
+
+- `DX__missing` (Tanilar_cleaned), `CHR__missing`, `ALG__missing`, `SITE__missing`, `TX__missing`  
+- Çok-etiketli NA’larda **imputasyon yapılmaz**; eksiklik bu bayraklarla temsil edilir.
+
+---
+
+## Multi-Hot “other” Sütunları
+
+- `DX__`, `CHR__`, `ALG__`, `TX__` için Top-N dışındaki etiketler **`__other`** kolonu ile yakalanır.  
+- `SITE__`’ta **other yoktur** (tüm gruplar üretilir).
+
+---
+
+## KNN İmputasyonu – Parametreler & Kapsam
+
+- Matris: `TedaviSuresi(Seans)`, `UygulamaSuresi(Dakika)`, `Yas`, `Cinsiyet`, `KanGrubu`, `Uyruk`, `Bolum`  
+- Parametreler: `n_neighbors=5`, `weights="distance"`  
+- Kategorikler KNN için **koda** çevrilir, oluşan değerler **etikete döndürülür**.  
+- KNN sonrası NA kalırsa **hata fırlatılır** (placeholder yok).  
+- Not: Sayısal kolonlar modelleme için numerik (float) formatta bırakılır.
+
+---
+
+## ID Sıralama Varsayımı
+
+- `SeansIndex` satır sırasına göre atanır. Elinizde tarih/saat varsa, pipeline’ı **çalıştırmadan önce** veri setini kronolojik sıralamanız önerilir.
+
+---
+
+## Gereksinimler (önerilen sürümler)
+
+- Bağımlılıklar **`requirements.txt`** dosyasında listelidir. Örnek sürümler:
+
+      numpy>=1.26
+      pandas>=2.2
+      matplotlib>=3.8
+      seaborn>=0.13
+      scikit-learn>=1.4
+      openpyxl>=3.1
 
 ---
 
@@ -313,18 +366,42 @@ Sıra:
 
 ---
 
+## Gizlilik / Görselleştirme Güvenliği
+
+- Kişisel kimlik unsurları (`HastaNo`, `HastaTedaviID`, `HastaTedaviSeansID`) **grafiklerde kullanılmaz**.  
+- EDA çıktıları yalnızca toplulaştırılmış/anonimleştirilmiş görseller üretir.
+
+---
+
+## Bilinen Sınırlar
+
+- KNN yalnızca **baz kategorik + sayısal** matriste çalışır; çok-etiketli metin alanlarında **imputasyon yapılmaz**.  
+- `SeansIndex` veri sırasına bağlıdır; zaman damgası yoksa gerçek klinik sıra ile **birebir** örtüşmeyebilir.  
+- Aşırı seyrek kategoriler OHE sonrası yüksek boyut oluşturabilir (özellikle `SITE__`).
+
+---
+
+## Parametreleştirme (opsiyonel)
+
+- Multi-hot eşikleri: `DX`=30, `CHR`=20, `ALG`=10, `TX`=15; `SITE`=tümü.  
+- KNN: `n_neighbors=5`, `weights="distance"`.  
+- Görsel tema: seaborn `whitegrid`, etiketler **tamamı BÜYÜK** (`UC()` ile).  
+- OHE: `drop_first=True`, `dummy_na=False`.
+
+---
+
 ## Sorun Giderme
 
 - **Girdi dosyası yok** → `data/Talent_Academy_Case_DT_2025.xlsx` yolunu kontrol edin.  
 - **Kurallar eksik/hatalı** → `rules/` altındaki modül adları ve `patterns`/`*_set`/`groups` isimleri doğru olmalı.  
 - **Excel’e yazma hatası** → Bağımlılıkları `requirements.txt` ile kurduğunuzdan emin olun.  
-- **KNN sonrası NA kaldı** → KNN matrisi kolonlarını ve veri kapsamını kontrol edin (tamamen boş bir kategorik varsa NA kalabilir).
+- **KNN sonrası NA kaldı** → KNN matrisi kolonlarını ve veri kapsamını kontrol edin (tamamen boş bir kategorik varsa NA kalabilir).  
 
 ---
 
 ## Genişletme İpuçları
 
-- Multi-hot eşikleri (`top_n`) iş ihtiyacına göre ayarlanabilir.  
+- Multi-hot Top-N eşikleri iş ihtiyacına göre ayarlanabilir.  
 - `rules/` kütüphanesi yaşayan bir sözlük gibi genişletilebilir.  
-- `model_ready` şemasını sabitlemek için whitelist ile kolon sırasını kilitleyebilirsiniz.  
-- Büyük veri için KNN maliyetini azaltmak adına matrise dahil edilen kolon sayısını optimize edin.
+- `model_ready` şemasını sabitlemek için whitelist ile kolon sırası kilitlenebilir.  
+- Büyük veri için KNN maliyetini azaltmak adına matrise dahil edilen kolon sayısı optimize edilebilir.
