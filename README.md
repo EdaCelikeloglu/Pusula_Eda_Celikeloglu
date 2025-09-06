@@ -265,12 +265,12 @@ Aşağıdaki alanlar için ek bayrak sütunları üretilir (hücre tamamen boşs
 
 - Bağımlılıklar **`requirements.txt`** dosyasında listelidir. Örnek sürümler:
 
-      numpy>=1.26
-      pandas>=2.2
-      matplotlib>=3.8
-      seaborn>=0.13
-      scikit-learn>=1.4
-      openpyxl>=3.1
+      numpy==2.3.2
+      pandas==2.3.2
+      matplotlib==3.10.6
+      seaborn==0.13.2
+      scikit-learn==1.7.1
+      openpyxl==3.1.5
 
 ---
 
